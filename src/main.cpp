@@ -6,23 +6,32 @@
 //Detail Character
 struct Player{
   char characterName[5];
-  int attack,HP;
+  int ATK_plus,HP;
   int xPosition,yPosition; //Current Position in Axis
 };
 
 Player tong = {"Tong", 10, 500,0,0};
 Player mk = {"MK", 10, 500,0,0};
+Player *player[] = {&tong, &mk};
 
 int gameMap[6][6] = {
-  {0,0,0,0,0,0},
-  {0,0,0,0,0,0},
-  {0,0,0,0,0,0},
-  {0,0,0,0,0,0},
-  {0,0,0,0,0,0},
-  {0,0,0,0,0,0},
+  {0,1,0,0,2,0},
+  {0,1,3,1,1,0},
+  {0,0,0,1,1,0},
+  {1,1,0,0,0,0},
+  {0,0,0,0,1,0},
+  {2,0,1,2,1,0}
 };
 
-int turn = 0;   //tell that who attack this turn -> 0=tong, 1=MK
+int backupMap[6][6] = {
+  {0,1,0,0,2,0},
+  {0,1,3,1,1,0},
+  {0,0,0,1,1,0},
+  {1,1,0,0,0,0},
+  {0,0,0,0,1,0},
+  {2,0,1,2,1,0}
+};
+
 typedef struct struct_message {
   int player;
   int x;
@@ -30,6 +39,11 @@ typedef struct struct_message {
   int wall_hit;
   int move_count;
 } struct_message;
+
+typedef struct control_t {
+  int turn; // 0 : Tong, 1 : MK
+  int mode; // 0 : walk, 1 : Duel, 2: In-Reset
+} control_t;
 
 struct_message income_mess;
 int player_id;
@@ -43,7 +57,11 @@ volatile int waiting = 1;
 String success;
 esp_now_peer_info_t peerInfo;
 
-uint8_t broadcastAddress[] = { 0x24, 0x6F, 0x28, 0x50, 0xA6, 0x78 };
+uint8_t broadcastAddress1[] = { 0x24, 0x6F, 0x28, 0x50, 0xA6, 0x78 };
+uint8_t broadcastAddress2[] = { 0x24, 0x6F, 0x28, 0x28, 0x15, 0x94};
+
+control_t control_msg;
+control_t * control = &control_msg;
 
 void OnDataRecv(const uint8_t* mac, const uint8_t* incomingData, int len) {
   memcpy(&income_mess, incomingData, sizeof(income_mess));
@@ -68,25 +86,51 @@ void OnDataRecv(const uint8_t* mac, const uint8_t* incomingData, int len) {
 }
 
 void initGame(Player *P1, Player *P2){
-  turn = 0;
+  
+  control_msg.turn = 0;
+  control_msg.mode = 0;
 
-  (P1 -> attack) = 10;
-  (P1 -> HP) = 500;
+  (P1 -> ATK_plus) = 0;
+  (P1 -> HP) = 30;
   (P1 -> xPosition) = 0;
   (P1 -> yPosition) = 0;
 
-  (P2 -> attack) = 10;
-  (P2 -> HP) = 500;
-  (P2 -> xPosition) = 2;
-  (P2 -> yPosition) = 3;
+  (P2 -> ATK_plus) = 0;
+  (P2 -> HP) = 30;
+  (P2 -> xPosition) = 5;
+  (P2 -> yPosition) = 5;
+
+  for (int y = 0; y < 6; y++) {
+    for (int x = 0; x < 6; x++) {
+      gameMap[y][x] = backupMap[y][x];
+    }
+  }
+
+  Serial.println("=-=-=-=-= Game Start! =-=-=-=-=");
 
 }
 
-void getItem(int item,Player *P){
-  
+void getItem(int x, int y, Player *P){
   // Serial.println(P -> characterName);
-  if(item == 2){
-    (P -> attack) += 10;
+  
+  /* +1 ATK+ */
+  if (gameMap[y][x] == 2) {
+    (P -> ATK_plus) += 1;
+    gameMap[y][x] = 0;
+    Serial.printf("%s Recieved +1 ATK+\n", P->characterName);
+    Serial.println("=========================");
+    Serial.printf("| Tong : %d | MK : %d |\n", player[0]->ATK_plus, player[1]->ATK_plus);
+    Serial.println("=========================");
+  }
+
+  /* +5 HP  */
+  if (gameMap[y][x] == 3) {
+    (P -> HP) += 5;
+    gameMap[y][x] = 0;
+    Serial.printf("%s Recieved +5 HP\n", P->characterName);
+    Serial.println("=========================");
+    Serial.printf("| Tong : %d | MK : %d |\n", player[0]->HP, player[1]->HP);
+    Serial.println("=========================");
   }
 }
 
@@ -110,11 +154,7 @@ int isNearPlayer(Player *P1, Player *P2) {
 
 void setup() {
   Serial.begin(115200);
-  //variable for test isNear
-  // tong.xPosition = 2;
-  // tong.yPosition = 5;
-  // mk.xPosition = 2;
-  // mk.yPosition = 0;
+
   initGame(&tong, &mk);
   WiFi.mode(WIFI_MODE_STA);
   Serial.println(WiFi.macAddress());
@@ -126,57 +166,101 @@ void setup() {
     Serial.println("Error initializing ESP-NOW");
     return;
   }
-
-  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
 
+  memcpy(peerInfo.peer_addr, broadcastAddress1, 6);
   if (esp_now_add_peer(&peerInfo) != ESP_OK) {
     Serial.println("Failed to add peer");
     return;
   }
+
+  memcpy(peerInfo.peer_addr, broadcastAddress2, 6);
+  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+    Serial.println("Failed to add peer");
+    return;
+  }
+
   esp_now_register_recv_cb(OnDataRecv);
 }
 
-int tile_id;
-int isMainPhase = 1;
-
-
 void loop() {
-
-  Player *player[] = {&tong, &mk};
-
-  if (isMainPhase) {  
+  
+  if (control->mode == 0) {  
     /* Main Phase */
     waiting = 1;
     while (waiting) ;
+    
     /* Update Position */  
-    player[turn] -> xPosition = pos_x;
-    player[turn] -> yPosition = pos_y;
+    player[control->turn] -> xPosition = pos_x;
+    player[control->turn] -> yPosition = pos_y;
+
     /* Wall Collision Damage */
-    if (wall_hit) attacked(player[turn], wall_hit);
+    if (wall_hit) {
+      Serial.printf("WALL HIT!!\n", wall_hit);
+      attacked(player[control->turn], wall_hit*5);
+      Serial.printf("Player : %d , HP : %d\n", control->turn, player[control->turn]->HP);
+    };
+    /* Check Game Over Caused by wall hits */
+    if (player[control->turn]->HP <= 0) {
+      control->mode = 2;
+      control->turn = !control->turn;
+    } 
+    else {
+      /* Check For Item & Take if there is an item */
+      getItem(pos_y, pos_x, player[control->turn]);
 
-    /* Check For Item */
-    tile_id = gameMap[pos_y][pos_x];
-    getItem(tile_id, player[turn]);
+      /* Check for Duel Phase */
+      if (isNearPlayer(player[control->turn], player[!control->turn])) {
+        control->mode = 1;
+      }
 
-    /* Check for Duel Phase */
-    if (isNearPlayer(player[turn], player[!turn])) {
-      isMainPhase = 0;
+      /* Change Turn */
+      if (move_count == 0 && control->mode == 0) {
+        control->turn = !control->turn;
+        esp_err_t result = esp_now_send(0, (uint8_t *) &control_msg, sizeof(control_t));
+        // Serial.println("Duel Session BEGIN!!!");
+      }
     }
-
-    if (move_count == 0 && isMainPhase) turn = !turn;
   } 
-  else {
+  else if (control->mode == 1) {
     /* Duel Mode */
-    Serial.printf("In Duel Session! Player %d's Turn\n", turn);
+    Serial.printf("In Duel Session! Player %d's Turn\n", control->turn);
+    /* Broadcast Turn to All Controllers */
+    esp_err_t result = esp_now_send(0, (uint8_t *) &control_msg, sizeof(control_t));
+    
+    /* Show Both HP Status */
+    Serial.println("=========================");
+    Serial.printf("| Tong : %d | MK : %d |\n", player[0]->HP, player[1]->HP);
+    Serial.println("=========================");
+
     waiting = 1;
     while (waiting);
-    Serial.printf("Player %d hit\n", turn);
-    delay(1000);
-  }
-  // if (isMainPhase && turn == 0) tong.yPosition--;
-  
-  /* Wait For Player's Turn to End*/
+    
+    attacked(player[!control->turn], player[control->turn]->ATK_plus + move_count);
+    
+    Serial.printf("Player %d hit with %d DMG\n", 
+      control->turn, 
+      player[control->turn]->ATK_plus + move_count);
 
+    /* Check Game Over or Continue*/
+    if (player[!control->turn]->HP <= 0) {
+      control->mode = 2;
+    } else {
+      control->turn = !control->turn;
+    }
+  } else {
+    /* Reset Mode (No Reset Yet) */
+    esp_err_t result = esp_now_send(0, (uint8_t *) &control_msg, sizeof(control_t));
+    
+    Serial.println("o=o=o=o GAME OVER! o=o=o=o");
+    Serial.printf("        Player %d WIN!\n", control->turn);
+    Serial.println("o=o=o=o=o=o=o=o=o=o=o=o=o");
+
+    /* Reset */
+    initGame(&tong, &mk);
+
+  }
+  // if (isMainPhase && turn == 0) tong.yPosition--; 
 }
