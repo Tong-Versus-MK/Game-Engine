@@ -5,13 +5,13 @@
 #define BUTTON 19
 //Detail Character
 struct Player{
-  char characterName[5];
+  int pid;
   int ATK_plus,HP;
   int xPosition,yPosition; //Current Position in Axis
 };
 
-Player tong = {"Tong", 10, 500,0,0};
-Player mk = {"MK", 10, 500,0,0};
+Player tong = {0, 10, 500,0,0};
+Player mk = {1, 10, 500,0,0};
 Player *player[] = {&tong, &mk};
 
 int gameMap[6][6] = {
@@ -32,6 +32,7 @@ int backupMap[6][6] = {
   {2,0,1,2,1,0}
 };
 
+/* [RECV] Message Received from Controllers */
 typedef struct struct_message {
   int player;
   int x;
@@ -40,9 +41,16 @@ typedef struct struct_message {
   int move_count;
 } struct_message;
 
+/* [SEND] Store Data that need to send to other peers */
 typedef struct control_t {
+  /* --- Global Control --- */ 
   int turn; // 0 : Tong, 1 : MK
   int mode; // 0 : walk, 1 : Duel, 2: In-Reset
+  /* ---- OLED Control ---- */ 
+  int stat_owner;
+  int stat_hp;
+  int stat_atk;
+  /* ---------------------- */ 
 } control_t;
 
 struct_message income_mess;
@@ -87,14 +95,19 @@ void OnDataRecv(const uint8_t* mac, const uint8_t* incomingData, int len) {
 
 void initGame(Player *P1, Player *P2){
   
-  control_msg.turn = 0;
-  control_msg.mode = 0;
-
+  control->turn = 0;
+  control->mode = 0;
+  // control->stat_atk = 0;
+  // control->stat_hp = 30;
+  // control->stat_owner = 2; /* Broadcast ID */
+  
+  // esp_err_t result = esp_now_send(0, (uint8_t *) &control_msg, sizeof(control_t));
+  
   (P1 -> ATK_plus) = 0;
   (P1 -> HP) = 30;
   (P1 -> xPosition) = 0;
   (P1 -> yPosition) = 0;
-
+  
   (P2 -> ATK_plus) = 0;
   (P2 -> HP) = 30;
   (P2 -> xPosition) = 5;
@@ -117,7 +130,10 @@ void getItem(int x, int y, Player *P){
   if (gameMap[y][x] == 2) {
     (P -> ATK_plus) += 1;
     gameMap[y][x] = 0;
-    Serial.printf("%s Recieved +1 ATK+\n", P->characterName);
+    control->stat_owner = P->pid; 
+    control->stat_hp = P->HP;
+    control->stat_atk = P->ATK_plus;
+    // Serial.printf("%s Recieved +1 ATK+\n", P->characterName);
     Serial.println("=========================");
     Serial.printf("| Tong : %d | MK : %d |\n", player[0]->ATK_plus, player[1]->ATK_plus);
     Serial.println("=========================");
@@ -127,15 +143,25 @@ void getItem(int x, int y, Player *P){
   if (gameMap[y][x] == 3) {
     (P -> HP) += 5;
     gameMap[y][x] = 0;
-    Serial.printf("%s Recieved +5 HP\n", P->characterName);
+    control->stat_owner = P->pid; 
+    control->stat_hp = P->HP;
+    control->stat_atk = P->ATK_plus;
+    // Serial.printf("%s Recieved +5 HP\n", P->characterName);
     Serial.println("=========================");
     Serial.printf("| Tong : %d | MK : %d |\n", player[0]->HP, player[1]->HP);
     Serial.println("=========================");
   }
+
+  esp_err_t result = esp_now_send(0, (uint8_t *) &control_msg, sizeof(control_t));
 }
 
 void attacked(Player *P, int dmg){
   (P -> HP) -= dmg;
+  /* Update HP Stat For OLED Control */
+  control->stat_owner = P->pid; 
+  control->stat_hp = P->HP;
+  control->stat_atk = P->ATK_plus; 
+  esp_err_t result = esp_now_send(0, (uint8_t *) &control_msg, sizeof(control_t));
 }
 
 int isNearPlayer(Player *P1, Player *P2) {
@@ -198,9 +224,10 @@ void loop() {
 
     /* Wall Collision Damage */
     if (wall_hit) {
-      Serial.printf("WALL HIT!!\n", wall_hit);
+      // Serial.printf("WALL HIT!!\n", wall_hit);
       attacked(player[control->turn], wall_hit*5);
-      Serial.printf("Player : %d , HP : %d\n", control->turn, player[control->turn]->HP);
+      // Serial.printf("Player : %d , HP : %d\n", control->turn, player[control->turn]->HP);
+      
     };
     /* Check Game Over Caused by wall hits */
     if (player[control->turn]->HP <= 0) {
