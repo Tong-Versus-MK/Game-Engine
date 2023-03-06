@@ -23,14 +23,14 @@ int gameMap[6][6] = {
   {2,0,1,2,1,0}
 };
 
-int backupMap[6][6] = {
-  {0,1,0,0,2,0},
-  {0,1,3,1,1,0},
-  {0,0,0,1,1,0},
-  {1,1,0,0,0,0},
-  {0,0,0,0,1,0},
-  {2,0,1,2,1,0}
-};
+// int backupMap[6][6] = {
+//   {0,1,0,0,2,0},
+//   {0,1,3,1,1,0},
+//   {0,0,0,1,1,0},
+//   {1,1,0,0,0,0},
+//   {0,0,0,0,1,0},
+//   {2,0,1,2,1,0}
+// };
 
 /* [RECV] Message Received from Controllers */
 typedef struct struct_message {
@@ -97,12 +97,14 @@ void initGame(Player *P1, Player *P2){
   
   control->turn = 0;
   control->mode = 0;
-  // control->stat_atk = 0;
-  // control->stat_hp = 30;
-  // control->stat_owner = 2; /* Broadcast ID */
+  control->stat_atk = 0;
+  control->stat_hp = 30;
+  control->stat_owner = 2; /* Broadcast ID */
   
-  // esp_err_t result = esp_now_send(0, (uint8_t *) &control_msg, sizeof(control_t));
-  
+  esp_err_t result1 = esp_now_send(0, (uint8_t *) &control_msg, sizeof(control_t));
+  // control->stat_owner = 1;
+
+
   (P1 -> ATK_plus) = 0;
   (P1 -> HP) = 30;
   (P1 -> xPosition) = 0;
@@ -113,11 +115,11 @@ void initGame(Player *P1, Player *P2){
   (P2 -> xPosition) = 5;
   (P2 -> yPosition) = 5;
 
-  for (int y = 0; y < 6; y++) {
-    for (int x = 0; x < 6; x++) {
-      gameMap[y][x] = backupMap[y][x];
-    }
-  }
+  // for (int y = 0; y < 6; y++) {
+  //   for (int x = 0; x < 6; x++) {
+  //     gameMap[y][x] = backupMap[y][x];
+  //   }
+  // }
 
   Serial.println("=-=-=-=-= Game Start! =-=-=-=-=");
 
@@ -181,7 +183,7 @@ int isNearPlayer(Player *P1, Player *P2) {
 void setup() {
   Serial.begin(115200);
 
-  initGame(&tong, &mk);
+
   WiFi.mode(WIFI_MODE_STA);
   Serial.println(WiFi.macAddress());
 
@@ -207,6 +209,8 @@ void setup() {
     Serial.println("Failed to add peer");
     return;
   }
+
+  initGame(&tong, &mk);
 
   esp_now_register_recv_cb(OnDataRecv);
 }
@@ -236,7 +240,7 @@ void loop() {
     } 
     else {
       /* Check For Item & Take if there is an item */
-      getItem(pos_y, pos_x, player[control->turn]);
+      getItem(pos_x, pos_y, player[control->turn]);
 
       /* Check for Duel Phase */
       if (isNearPlayer(player[control->turn], player[!control->turn])) {
