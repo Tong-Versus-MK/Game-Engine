@@ -26,6 +26,8 @@ int gameMap[6][6] = {
   {2,0,1,2,1,0}
 };
 
+double damageModifier[] = {0,0.5,0.75,1,1.25,1.5,2};
+
 // int backupMap[6][6] = {
 //   {0,1,0,0,2,0},
 //   {0,1,3,1,1,0},
@@ -108,12 +110,12 @@ void initGame(Player *P1, Player *P2){
   // control->stat_owner = 1;
 
 
-  (P1 -> ATK_plus) = 0;
+  (P1 -> ATK_plus) = 4;
   (P1 -> HP) = 30;
   (P1 -> xPosition) = 0;
   (P1 -> yPosition) = 0;
   
-  (P2 -> ATK_plus) = 0;
+  (P2 -> ATK_plus) = 4;
   (P2 -> HP) = 30;
   (P2 -> xPosition) = 5;
   (P2 -> yPosition) = 5;
@@ -274,7 +276,7 @@ void loop() {
     waiting = 1;
     while (waiting);
     
-    attacked(player[!control->turn], player[control->turn]->ATK_plus + move_count);
+    attacked(player[!control->turn], ceil(player[control->turn]->ATK_plus *damageModifier[move_count]));
     
     Serial.printf("Player %d hit with %d DMG\n", 
       control->turn, 
