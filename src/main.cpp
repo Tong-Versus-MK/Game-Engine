@@ -1,9 +1,12 @@
 #include <Arduino.h>
 #include <esp_now.h>
 #include <WiFi.h>
+#include <Bounce2.h>
 
 #define BUTTON 19
 //Detail Character
+Bounce debouncer_btn = Bounce();
+
 struct Player{
   int pid;
   int ATK_plus,HP;
@@ -183,6 +186,8 @@ int isNearPlayer(Player *P1, Player *P2) {
 void setup() {
   Serial.begin(115200);
 
+  debouncer_btn.attach(BUTTON, INPUT_PULLUP);
+  debouncer_btn.interval(25);
 
   WiFi.mode(WIFI_MODE_STA);
   Serial.println(WiFi.macAddress());
@@ -232,7 +237,7 @@ void loop() {
       attacked(player[control->turn], wall_hit*5);
       // Serial.printf("Player : %d , HP : %d\n", control->turn, player[control->turn]->HP);
       
-    };
+    }
     /* Check Game Over Caused by wall hits */
     if (player[control->turn]->HP <= 0) {
       control->mode = 2;
@@ -283,13 +288,15 @@ void loop() {
     }
   } else {
     /* Reset Mode (No Reset Yet) */
+    debouncer_btn.update(); 
+
     esp_err_t result = esp_now_send(0, (uint8_t *) &control_msg, sizeof(control_t));
-    
     Serial.println("o=o=o=o GAME OVER! o=o=o=o");
     Serial.printf("        Player %d WIN!\n", control->turn);
     Serial.println("o=o=o=o=o=o=o=o=o=o=o=o=o");
 
     /* Reset */
+    while (!debouncer_btn.fell());
     initGame(&tong, &mk);
 
   }
