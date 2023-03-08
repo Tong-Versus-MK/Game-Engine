@@ -121,7 +121,7 @@ void initGame(Player *P1, Player *P2){
   /* Copy Backup Data */
   for (int y = 0; y < 8; y++) {
     for (int x = 0; x < 8; x++) {
-      if (backupMap[y][x] = 2){
+      if (backupMap[y][x] == 2){
         gameMap[y][x] = esp_random()%2 + 2;
       } 
       else{
