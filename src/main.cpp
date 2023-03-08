@@ -100,7 +100,7 @@ void initGame(Player *P1, Player *P2){
   
   control->turn = 0;
   control->mode = 0;
-  control->stat_atk = 0;
+  control->stat_atk = 4;
   control->stat_hp = 30;
   control->stat_owner = 2; /* Broadcast ID */
   
@@ -115,8 +115,8 @@ void initGame(Player *P1, Player *P2){
   
   (P2 -> ATK_plus) = 4;
   (P2 -> HP) = 30;
-  (P2 -> xPosition) = 5;
-  (P2 -> yPosition) = 5;
+  (P2 -> xPosition) = 7;
+  (P2 -> yPosition) = 7;
 
   /* Copy Backup Data */
   for (int y = 0; y < 8; y++) {
