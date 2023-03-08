@@ -17,6 +17,8 @@ Player tong = {0, 10, 500,0,0};
 Player mk = {1, 10, 500,0,0};
 Player *player[] = {&tong, &mk};
 
+
+/* 0 : Space, 1 : Wall, 2 : +1 ATK, 3 : +5 HP */
 int gameMap[6][6] = {
   {0,1,0,0,2,0},
   {0,1,3,1,1,0},
@@ -28,14 +30,15 @@ int gameMap[6][6] = {
 
 double damageModifier[] = {0,0.5,0.75,1,1.25,1.5,2};
 
-// int backupMap[6][6] = {
-//   {0,1,0,0,2,0},
-//   {0,1,3,1,1,0},
-//   {0,0,0,1,1,0},
-//   {1,1,0,0,0,0},
-//   {0,0,0,0,1,0},
-//   {2,0,1,2,1,0}
-// };
+/* 0 : Space, 1 : Wall, 2 : Unknown Item */
+int backupMap[6][6] = {
+  {0,1,0,0,2,0},
+  {0,1,2,1,1,0},
+  {0,0,0,1,1,0},
+  {1,1,0,0,0,0},
+  {0,0,0,0,1,0},
+  {2,0,1,2,1,0}
+};
 
 /* [RECV] Message Received from Controllers */
 typedef struct struct_message {
@@ -120,11 +123,12 @@ void initGame(Player *P1, Player *P2){
   (P2 -> xPosition) = 5;
   (P2 -> yPosition) = 5;
 
-  // for (int y = 0; y < 6; y++) {
-  //   for (int x = 0; x < 6; x++) {
-  //     gameMap[y][x] = backupMap[y][x];
-  //   }
-  // }
+  /* Copy Backup Data */
+  for (int y = 0; y < 6; y++) {
+    for (int x = 0; x < 6; x++) {
+      gameMap[y][x] = backupMap[y][x];
+    }
+  }
 
   Serial.println("=-=-=-=-= Game Start! =-=-=-=-=");
 
@@ -290,15 +294,16 @@ void loop() {
     }
   } else {
     /* Reset Mode (No Reset Yet) */
-    debouncer_btn.update(); 
+    // debouncer_btn.update(); 
 
     esp_err_t result = esp_now_send(0, (uint8_t *) &control_msg, sizeof(control_t));
     Serial.println("o=o=o=o GAME OVER! o=o=o=o");
     Serial.printf("        Player %d WIN!\n", control->turn);
     Serial.println("o=o=o=o=o=o=o=o=o=o=o=o=o");
 
+    delay(5000);
     /* Reset */
-    while (!debouncer_btn.fell());
+    // while (!debouncer_btn.fell());
     initGame(&tong, &mk);
 
   }
