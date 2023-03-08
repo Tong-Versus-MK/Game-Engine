@@ -19,25 +19,20 @@ Player *player[] = {&tong, &mk};
 
 
 /* 0 : Space, 1 : Wall, 2 : +1 ATK, 3 : +5 HP */
-int gameMap[6][6] = {
-  {0,1,0,0,2,0},
-  {0,1,3,1,1,0},
-  {0,0,0,1,1,0},
-  {1,1,0,0,0,0},
-  {0,0,0,0,1,0},
-  {2,0,1,2,1,0}
-};
+int gameMap[8][8];
 
 double damageModifier[] = {0,0.5,0.75,1,1.25,1.5,2};
 
 /* 0 : Space, 1 : Wall, 2 : Unknown Item */
-int backupMap[6][6] = {
-  {0,1,0,0,2,0},
-  {0,1,2,1,1,0},
-  {0,0,0,1,1,0},
-  {1,1,0,0,0,0},
-  {0,0,0,0,1,0},
-  {2,0,1,2,1,0}
+int backupMap[8][8] = {
+  {0,1,2,0,0,0,0,2},
+  {0,1,1,1,0,0,1,0},
+  {0,0,0,1,0,0,1,1},
+  {1,1,0,2,2,0,0,0},
+  {0,0,0,2,2,0,0,0},
+  {0,0,1,0,0,1,0,0},
+  {0,1,1,1,0,1,1,0},
+  {2,0,0,2,0,0,1,0}
 };
 
 /* [RECV] Message Received from Controllers */
@@ -124,9 +119,14 @@ void initGame(Player *P1, Player *P2){
   (P2 -> yPosition) = 5;
 
   /* Copy Backup Data */
-  for (int y = 0; y < 6; y++) {
-    for (int x = 0; x < 6; x++) {
-      gameMap[y][x] = backupMap[y][x];
+  for (int y = 0; y < 8; y++) {
+    for (int x = 0; x < 8; x++) {
+      if (backupMap[y][x] = 2){
+        gameMap[y][x] = esp_random()%2 + 2;
+      } 
+      else{
+        gameMap[y][x] = backupMap[y][x];
+      }   
     }
   }
 
