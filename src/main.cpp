@@ -73,6 +73,7 @@ int pos_x;
 int pos_y;
 int wall_hit;
 int move_count;
+int damaged;
 
 volatile int waiting = 1;
 
@@ -316,12 +317,13 @@ void loop() {
 
     waiting = 1;
     while (waiting);
-
-    attacked(player[!control->turn], ceil(player[control->turn]->ATK_plus * damageModifier[move_count]));
-
-    Serial.printf("Player %d hit with %d DMG\n",
-      control->turn,
-      player[control->turn]->ATK_plus + move_count);
+    
+    damaged = ceil(player[control->turn]->ATK_plus *damageModifier[move_count]);
+    attacked(player[!control->turn], damaged);
+    
+    Serial.println("=============================");
+    Serial.printf("Player %d hit with %d DMG\n", control->turn, damaged);
+    Serial.println("=============================");
 
     /* Check Game Over or Continue*/
     if (player[!control->turn]->HP <= 0) {
