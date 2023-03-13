@@ -62,7 +62,7 @@ typedef struct display_mess {
   int turn;
   int x;
   int y;
-  int board[8][8];
+  int board[8];
 } display_mess;
 
 display_mess dmess;
@@ -93,6 +93,17 @@ void SendToDisplay() {
   dmess.x = player[control->turn]->xPosition;
   dmess.y = player[control->turn]->yPosition;
   esp_err_t result = esp_now_send(displayAddress, (uint8_t*)&dmess, sizeof(display_mess));
+}
+
+void OnDataSent(const uint8_t* mac_addr, esp_now_send_status_t status) {
+  Serial.print("\r\nLast Packet Send Status:\t");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+  if (status == 0) {
+    success = "Delivery Success :)";
+  }
+  else {
+    success = "Delivery Fail :(";
+  }
 }
 
 void OnDataRecv(const uint8_t* mac, const uint8_t* incomingData, int len) {
@@ -126,7 +137,7 @@ void initGame(Player* P1, Player* P2) {
   control->stat_owner = 2; /* Broadcast ID */
 
   esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
-  esp_err_t result1 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
+  esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
   // control->stat_owner = 1;
 
   (P1->ATK_plus) = 4;
@@ -139,16 +150,18 @@ void initGame(Player* P1, Player* P2) {
   (P2->xPosition) = 7;
   (P2->yPosition) = 7;
 
+  int ci=0;
   /* Copy Backup Data */
   for (int y = 0; y < 8; y++) {
     for (int x = 0; x < 8; x++) {
       if (backupMap[y][x] == 2) {
         gameMap[y][x] = esp_random() % 2 + 2;
+        dmess.board[ci] = gameMap[y][x];
+        ci++;
       }
       else {
         gameMap[y][x] = backupMap[y][x];
       }
-      dmess.board[y][x] = gameMap[y][x];
     }
   }
 
@@ -156,8 +169,8 @@ void initGame(Player* P1, Player* P2) {
   dmess.mode = 0;
   dmess.x = 0;
   dmess.y = 0;
-  esp_err_t result = esp_now_send(displayAddress, (uint8_t*)&dmess, sizeof(display_mess));
-
+  esp_err_t result = esp_now_send(displayAddress, (uint8_t*)&dmess, sizeof(dmess));
+  //SendToDisplay();
 
   Serial.println("=-=-=-=-= Game Start! =-=-=-=-=");
 
@@ -194,8 +207,8 @@ void getItem(int x, int y, Player* P) {
     SendToDisplay();
   }
 
-  esp_err_t result = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
-  esp_err_t result = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
+  esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
+  esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
 }
 
 void attacked(Player* P, int dmg) {
@@ -204,8 +217,8 @@ void attacked(Player* P, int dmg) {
   control->stat_owner = P->pid;
   control->stat_hp = P->HP;
   control->stat_atk = P->ATK_plus;
-  esp_err_t result = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
-  esp_err_t result = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
+  esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
+  esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
 }
 
 int isNearPlayer(Player* P1, Player* P2) {
@@ -254,13 +267,18 @@ void setup() {
     return;
   }
 
+  memcpy(peerInfo.peer_addr, displayAddress, 6);
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add peer");
+    return;
+  }
+  esp_now_register_send_cb(OnDataSent);
   initGame(&tong, &mk);
-
+  
   esp_now_register_recv_cb(OnDataRecv);
 }
 
 void loop() {
-
   if (control->mode == 0) {
     /* Main Phase */
     waiting = 1;
@@ -296,8 +314,8 @@ void loop() {
       /* Change Turn */
       if (move_count == 0 && control->mode == 0) {
         control->turn = !control->turn;
-        esp_err_t result = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
-        esp_err_t result = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
+        esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
+        esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
         SendToDisplay();
         // Serial.println("Duel Session BEGIN!!!");
       }
@@ -307,8 +325,8 @@ void loop() {
     /* Duel Mode */
     Serial.printf("In Duel Session! Player %d's Turn\n", control->turn);
     /* Broadcast Turn to All Controllers */
-    esp_err_t result = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
-    esp_err_t result = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
+    esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
+    esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
 
     /* Show Both HP Status */
     Serial.println("=========================");
@@ -338,8 +356,8 @@ void loop() {
     /* Reset Mode (No Reset Yet) */
     // debouncer_btn.update(); 
 
-    esp_err_t result = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
-    esp_err_t result = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
+    esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
+    esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
     Serial.println("o=o=o=o GAME OVER! o=o=o=o");
     Serial.printf("        Player %d WIN!\n", control->turn);
     Serial.println("o=o=o=o=o=o=o=o=o=o=o=o=o");
