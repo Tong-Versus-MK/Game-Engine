@@ -92,8 +92,10 @@ void SendToDisplay() {
   dmess.turn = control->turn;
   dmess.x = player[control->turn]->xPosition;
   dmess.y = player[control->turn]->yPosition;
+
   delay(100);
   esp_err_t result = esp_now_send(displayAddress, (uint8_t*)&dmess, sizeof(display_mess));
+  // printf("%s\n",esp_err_to_name(result));
 }
 
 void OnDataSent(const uint8_t* mac_addr, esp_now_send_status_t status) {
@@ -167,7 +169,6 @@ void initGame(Player* P1, Player* P2) {
       }
     }
   }
-
   dmess.turn = 0;
   dmess.mode = 2;
   dmess.x = 0;
@@ -306,7 +307,7 @@ void loop() {
     if (player[control->turn]->HP <= 0) {
       control->mode = 2;
       control->turn = !control->turn;
-      //SendToDisplay();
+      SendToDisplay();
     }
     else {
       /* Check For Item & Take if there is an item */
@@ -328,10 +329,12 @@ void loop() {
         esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
         delay(100);
         esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
+
         // printf("Result 1 : %s\n", esp_err_to_name(result1));
         // printf("Result 2 : %s\n", esp_err_to_name(result2));
+        // printf("Changed turn to %d\n",control->turn);
+
         SendToDisplay();
-        // Serial.println("Duel Session BEGIN!!!");
       }
     }
   }
