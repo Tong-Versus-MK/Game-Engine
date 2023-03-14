@@ -92,7 +92,8 @@ void SendToDisplay() {
   dmess.turn = control->turn;
   dmess.x = player[control->turn]->xPosition;
   dmess.y = player[control->turn]->yPosition;
-  delay(200);
+
+  delay(100);
   esp_err_t result = esp_now_send(displayAddress, (uint8_t*)&dmess, sizeof(display_mess));
   // printf("%s\n",esp_err_to_name(result));
 }
@@ -138,7 +139,9 @@ void initGame(Player* P1, Player* P2) {
   control->stat_hp = 30;
   control->stat_owner = 2; /* Broadcast ID */
 
+  delay(100);
   esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
+  delay(100);
   esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
   // control->stat_owner = 1;
 
@@ -170,6 +173,7 @@ void initGame(Player* P1, Player* P2) {
   dmess.mode = 2;
   dmess.x = 0;
   dmess.y = 0;
+  delay(100);
   esp_err_t result = esp_now_send(displayAddress, (uint8_t*)&dmess, sizeof(dmess));
   //SendToDisplay();
 
@@ -208,7 +212,9 @@ void getItem(int x, int y, Player* P) {
     SendToDisplay();
   }
 
+  delay(100);
   esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
+  delay(100);
   esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
 }
 
@@ -218,7 +224,9 @@ void attacked(Player* P, int dmg) {
   control->stat_owner = P->pid;
   control->stat_hp = P->HP;
   control->stat_atk = P->ATK_plus;
+  delay(100);
   esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
+  delay(100);
   esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
 }
 
@@ -334,8 +342,12 @@ void loop() {
     /* Duel Mode */
     Serial.printf("In Duel Session! Player %d's Turn\n", control->turn);
     /* Broadcast Turn to All Controllers */
+    delay(100);
     esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
+    delay(100);
     esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
+    printf("Result 1 : %s\n", esp_err_to_name(result1));
+    printf("Result 1 : %s\n", esp_err_to_name(result2));
 
     /* Show Both HP Status */
     Serial.println("=========================");
@@ -364,8 +376,9 @@ void loop() {
   else {
     /* Reset Mode (No Reset Yet) */
     // debouncer_btn.update(); 
-
+    delay(100);
     esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
+    delay(100);
     esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
     Serial.println("o=o=o=o GAME OVER! o=o=o=o");
     Serial.printf("        Player %d WIN!\n", control->turn);
