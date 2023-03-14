@@ -272,7 +272,7 @@ void setup() {
     Serial.println("Failed to add peer");
     return;
   }
-  esp_now_register_send_cb(OnDataSent);
+  // esp_now_register_send_cb(OnDataSent);
   initGame(&tong, &mk);
   
   esp_now_register_recv_cb(OnDataRecv);
@@ -293,7 +293,6 @@ void loop() {
       // Serial.printf("WALL HIT!!\n", wall_hit);
       attacked(player[control->turn], wall_hit * 5);
       // Serial.printf("Player : %d , HP : %d\n", control->turn, player[control->turn]->HP);
-
     }
     /* Check Game Over Caused by wall hits */
     if (player[control->turn]->HP <= 0) {
@@ -313,9 +312,16 @@ void loop() {
 
       /* Change Turn */
       if (move_count == 0 && control->mode == 0) {
+        Serial.println(control->turn);
         control->turn = !control->turn;
+        Serial.print("Next Turn : ");
+        Serial.println(control->turn);
+        delay(100);
         esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
+        delay(100);
         esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
+        // printf("Result 1 : %s\n", esp_err_to_name(result1));
+        // printf("Result 2 : %s\n", esp_err_to_name(result2));
         SendToDisplay();
         // Serial.println("Duel Session BEGIN!!!");
       }
