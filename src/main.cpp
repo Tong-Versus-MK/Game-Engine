@@ -98,7 +98,7 @@ void OnDataRecv(const uint8_t* mac, const uint8_t* incomingData, int len) {
 
 void initGame(Player *P1, Player *P2){
   
-  control->turn = 0;
+  control->turn = esp_random()%2;
   control->mode = 0;
   control->stat_atk = 0;
   control->stat_hp = 30;
