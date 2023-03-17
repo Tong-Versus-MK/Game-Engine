@@ -131,9 +131,9 @@ void OnDataRecv(const uint8_t* mac, const uint8_t* incomingData, int len) {
   Serial.println(move_count);
 }
 
-void initGame(Player *P1, Player *P2){
-  
-  control->turn = esp_random()%2;
+void initGame(Player* P1, Player* P2) {
+
+  control->turn = esp_random() % 2;
   control->mode = 0;
   control->stat_atk = 4;
   control->stat_hp = 30;
@@ -155,7 +155,7 @@ void initGame(Player *P1, Player *P2){
   (P2->xPosition) = 7;
   (P2->yPosition) = 7;
 
-  int ci=0;
+  int ci = 0;
   /* Copy Backup Data */
   for (int y = 0; y < 8; y++) {
     for (int x = 0; x < 8; x++) {
@@ -169,15 +169,16 @@ void initGame(Player *P1, Player *P2){
       }
     }
   }
-  dmess.turn = 0;
+  dmess.turn = control->turn;
   dmess.mode = 2;
-  dmess.x = 0;
-  dmess.y = 0;
+  dmess.x = player[control->turn]->xPosition;
+  dmess.y = player[control->turn]->yPosition;
   delay(100);
   esp_err_t result = esp_now_send(displayAddress, (uint8_t*)&dmess, sizeof(dmess));
   //SendToDisplay();
 
   Serial.println("=-=-=-=-= Game Start! =-=-=-=-=");
+  //printf("Step 1 Turn : %d\n", control->turn);
 
 }
 
@@ -232,13 +233,15 @@ void attacked(Player* P, int dmg) {
 
 int isNearPlayer(Player* P1, Player* P2) {
   //check top&bottom
+  printf("player %d-> x: %d y: %d\n", P1->pid, P1->xPosition, P1->yPosition);
+  printf("player %d-> x: %d y: %d\n", P2->pid, P2->xPosition, P2->yPosition);
   if (((P1->xPosition) == (P2->xPosition)) && (abs((P1->yPosition) - (P2->yPosition)) == 1)) {
-    // Serial.println("enemy near at tb");
+    Serial.println("enemy near at tb");
     return 1;
   }
   //check left&right
   if (((P1->yPosition) == (P2->yPosition)) && (abs((P1->xPosition) - (P2->xPosition)) == 1)) {
-    // Serial.println("enemy near at lr");
+    Serial.println("enemy near at lr");
     return 1;
   }
   return 0;
@@ -283,20 +286,21 @@ void setup() {
   }
   // esp_now_register_send_cb(OnDataSent);
   initGame(&tong, &mk);
-  
+
   esp_now_register_recv_cb(OnDataRecv);
 }
 
 void loop() {
   if (control->mode == 0) {
+    //printf("Step 2 Turn : %d\n", control->turn);
     /* Main Phase */
     waiting = 1;
     while (waiting);
-
+    //printf("Step 3 Turn : %d\n", control->turn);
     /* Update Position */
     player[control->turn]->xPosition = pos_x;
     player[control->turn]->yPosition = pos_y;
-
+    printf("Step 4 Turn : %d\n", control->turn);
     /* Wall Collision Damage */
     if (wall_hit) {
       // Serial.printf("WALL HIT!!\n", wall_hit);
@@ -310,11 +314,15 @@ void loop() {
       SendToDisplay();
     }
     else {
+      //printf("Step 5 Turn : %d\n", control->turn);
       /* Check For Item & Take if there is an item */
       getItem(pos_x, pos_y, player[control->turn]);
 
+
+      printf("Check duel after player %d walk\n", control->turn);
       /* Check for Duel Phase */
       if (isNearPlayer(player[control->turn], player[!control->turn])) {
+        printf("Player %d should begin to hit\n", control->turn);
         control->mode = 1;
         SendToDisplay();
       }
@@ -346,8 +354,8 @@ void loop() {
     esp_err_t result1 = esp_now_send(broadcastAddress1, (uint8_t*)&control_msg, sizeof(control_t));
     delay(100);
     esp_err_t result2 = esp_now_send(broadcastAddress2, (uint8_t*)&control_msg, sizeof(control_t));
-    printf("Result 1 : %s\n", esp_err_to_name(result1));
-    printf("Result 1 : %s\n", esp_err_to_name(result2));
+    //printf("Result 1 : %s\n", esp_err_to_name(result1));
+    //printf("Result 1 : %s\n", esp_err_to_name(result2));
 
     /* Show Both HP Status */
     Serial.println("=========================");
@@ -356,10 +364,10 @@ void loop() {
 
     waiting = 1;
     while (waiting);
-    
-    damaged = ceil(player[control->turn]->ATK_plus *damageModifier[move_count]);
+
+    damaged = ceil(player[control->turn]->ATK_plus * damageModifier[move_count]);
     attacked(player[!control->turn], damaged);
-    
+
     Serial.println("=============================");
     Serial.printf("Player %d hit with %d DMG\n", control->turn, damaged);
     Serial.println("=============================");
